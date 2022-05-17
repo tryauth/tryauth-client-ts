@@ -9,7 +9,10 @@ import {
     GRANT_TYPE_AUTHORIZATION_CODE,
     TokenResponse
 } from '@openid/appauth';
-import { TokenRequestHandler } from '@openid/appauth/src/token_request_handler';
+
+import { 
+    TokenRequestHandler 
+} from '@openid/appauth/src/token_request_handler';
 
 export default class OAuthAuthentication {
     private readonly _authorizationServiceConfiguration: AuthorizationServiceConfiguration;
