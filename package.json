@@ -1,11 +1,12 @@
 {
   "name": "@tryauth/tryauth-client-ts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TypeScript library for OAuth2 Authentication",
   "author": "Alex Tochetto <atochetto@tech6group.com>",
   "license": "MIT",
   "type": "module",
   "files": [
+    "/dist/",
     "/src/"
   ],
   "scripts": {
