@@ -5,6 +5,7 @@
   "author": "Alex Tochetto <atochetto@tech6group.com>",
   "license": "MIT",
   "main": "dist/tryauth.js",
+  "types": "dist/tryauth.d.js",
   "files": [
     "/dist/",
     "/src/"
