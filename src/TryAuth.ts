@@ -1,7 +1,12 @@
-class TryAuth {
-    constructor() {
+class TryAuthAuthorizationOptions {
+    ClientId: string = null;
+    IssuerEndpoint: string = null;
+    ResponseType: string = null;
+    Scopes: string = null;
+}
 
-    }
+export default class TryAuth {
+    constructor() { }
 
     public async Authorize(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
         const headers = this.SetDefaultHeaders();

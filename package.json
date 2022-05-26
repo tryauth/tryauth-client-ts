@@ -1,27 +1,20 @@
 {
   "name": "@tryauth/tryauth-client-ts",
-  "version": "1.0.3",
+  "version": "1.0.8",
   "description": "TypeScript library for OAuth2 Authentication",
   "author": "Alex Tochetto <atochetto@tech6group.com>",
   "license": "MIT",
-  "main": "dist/tryauth.js",
-  "types": "dist/tryauth.d.js",
+  "main": "dist/TryAuth.js",
+  "types": "dist/TryAuth.d.js",
   "files": [
-    "/dist/",
-    "/src/"
+    "dist/**/*"
   ],
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "devDependencies": {
     "typescript": "^4.6.4"
   },
   "dependencies": {},
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/tryauth/tryauth-client-ts"
   }
 }
