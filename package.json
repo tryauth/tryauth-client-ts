@@ -1,27 +1,32 @@
 {
   "name": "@tryauth/tryauth-client-ts",
-  "version": "1.0.3",
-  "description": "TypeScript library for OAuth2 Authentication",
+  "version": "1.0.10",
   "author": "Alex Tochetto <atochetto@tech6group.com>",
-  "license": "MIT",
-  "main": "dist/tryauth.js",
-  "types": "dist/tryauth.d.js",
-  "files": [
-    "/dist/",
-    "/src/"
+  "description": "TypeScript library for OAuth2 Authentication",
+  "keywords": [
+    "tryauth",
+    "oauth",
+    "openid",
+    "authentication"
   ],
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "license": "MIT",
+  "main": "dist/TryAuth.js",
+  "types": "dist/TryAuth.d.js",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {},
   "devDependencies": {
     "typescript": "^4.6.4"
   },
-  "dependencies": {},
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+  "dependencies": {
+    "jwt-decode": "^3.1.2"
   },
   "repository": {
     "type": "git",
     "url": "git://github.com/tryauth/tryauth-client-ts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }
