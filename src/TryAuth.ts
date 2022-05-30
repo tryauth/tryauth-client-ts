@@ -1,19 +1,19 @@
 import JwtDecode from 'jwt-decode';
 
 class TryAuthAuthorizationResponse {
-    AccessToken: string = null;
-    IdToken: string = null;
+    public AccessToken: string = null;
+    public IdToken: string = null;
 }
 
 class TryAuthAuthorizationOptions {
-    ClientId: string = null;
-    IssuerEndpoint: string = null;
-    ResponseType: string = null;
-    Scopes: string = null;
+    public ClientId: string = null;
+    public IssuerEndpoint: string = null;
+    public ResponseType: string = null;
+    public Scopes: string = null;
 }
 
 class TryAuthError {
-    error: string = null;
+    public error: string = null;
 }
 
 interface JwtPayload {
@@ -27,7 +27,7 @@ interface JwtPayload {
 }
 
 export default class TryAuth {
-    private readonly NONCE_KEY = 'tryauth_authorization_nonce_key'
+    private readonly NONCE_KEY = 'tryauth_authorization_nonce_key';
     private readonly RESPONSE_TYPE_IDTOKEN_TOKEN: string = 'id_token token';
     private readonly RESPONSE_TYPE_TOKEN_IDTOKEN: string = 'token id_token';
     private readonly RESPONSE_TYPE_CODE: string = 'code';
@@ -39,40 +39,35 @@ export default class TryAuth {
         if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_IDTOKEN_TOKEN || tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_TOKEN_IDTOKEN) {
             await this.AuthorizeIdTokenToken(tryAuthAuthorizationOptions);
         }
-        else if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_CODE) {
-
-        }
-        else {
-            // throw error
-        }
+        // throw error
     }
 
     public async CheckAuthorize(): Promise<TryAuthAuthorizationResponse | TryAuthError> {
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = this.GetResponseData();
         const nonceValid = await this.ValidateIdTokenNonce(tryAuthAuthorizationResponse.IdToken);
         if (!nonceValid) {
-            let tryAuthError: TryAuthError = new TryAuthError();
+            const tryAuthError: TryAuthError = new TryAuthError();
             tryAuthError.error = 'invalid nonce';
             return tryAuthError;
         }
         // validate expired iat
         // validate not before nbf
-        this.localStorage.removeItem(this.NONCE_KEY);
+        await this.localStorage.removeItem(this.NONCE_KEY);
         return tryAuthAuthorizationResponse;
     }
 
     private GetResponseData(): TryAuthAuthorizationResponse {
-        let map = this.GetAuthorizationKeyValue();
+        const map = this.GetAuthorizationKeyValue();
         const access_token = map.get(this.ACCESS_TOKEN);
         const id_token = map.get(this.ID_TOKEN);
-        let tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = new TryAuthAuthorizationResponse();
+        const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = new TryAuthAuthorizationResponse();
         tryAuthAuthorizationResponse.AccessToken = access_token;
         tryAuthAuthorizationResponse.IdToken = id_token;
         return tryAuthAuthorizationResponse;
     }
 
     private async ValidateIdTokenNonce(idToken: string): Promise<boolean> {
-        let jwtPayload = JwtDecode<JwtPayload>(idToken);
+        const jwtPayload = JwtDecode<JwtPayload>(idToken);
         const nonceStored = await this.localStorage.getItem(this.NONCE_KEY);
         if (jwtPayload.nonce === nonceStored) {
             return true;
@@ -87,7 +82,7 @@ export default class TryAuth {
         }
         hash = hash.substring(1); // remove the '#'
         const split: string[] = hash.split('&');
-        let map = new Map<string, string>();
+        const map = new Map<string, string>();
         for (let i = 0; i < split.length; i++) {
             const keys = split[i];
             const keyValue = keys.split('=');
@@ -116,7 +111,7 @@ export default class TryAuth {
     }
 
     private SetDefaultHeaders(): [string, string][] {
-        let headers: [string, string][] = [];
+        const headers: [string, string][] = [];
         headers.push(['Content-Type', 'application/x-www-form-urlencoded']); // together withCredentials do not as for CORS
         return headers;
     }
@@ -197,10 +192,10 @@ class Crypto {
         return this.BufferToString(buffer);
     }
 
-    BufferToString(buffer: Uint8Array): string {
-        let state = [];
+    private BufferToString(buffer: Uint8Array): string {
+        const state = [];
         for (let i = 0; i < buffer.byteLength; i += 1) {
-            let index = buffer[i] % this._charset.length;
+            const index = buffer[i] % this._charset.length;
             state.push(this._charset[index]);
         }
         return state.join('');

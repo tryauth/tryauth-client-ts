@@ -1,1 +1,1 @@
-export * from './TryAuth'
+export * from './TryAuth';

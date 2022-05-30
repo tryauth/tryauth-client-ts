@@ -1,6 +1,6 @@
 {
   "name": "@tryauth/tryauth-client-ts",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "author": "Alex Tochetto <atochetto@tech6group.com>",
   "description": "TypeScript library for OAuth2 Authentication",
   "keywords": [
@@ -15,9 +15,12 @@
   "files": [
     "dist/**/*"
   ],
-  "scripts": {},
+  "scripts": {
+    "tslint": "tslint --project tslint.json"
+  },
   "devDependencies": {
-    "typescript": "^4.6.4"
+    "tslint": "^6.1.3",
+    "typescript": "^4.7.2"
   },
   "dependencies": {
     "jwt-decode": "^3.1.2"
