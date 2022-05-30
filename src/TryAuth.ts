@@ -1,8 +1,9 @@
 import JwtDecode from 'jwt-decode';
 
-class TryAuthAuthorizationResponse {
+export class TryAuthAuthorizationResponse {
     public AccessToken: string = null;
     public IdToken: string = null;
+    public Error: TryAuthError = null;
 }
 
 class TryAuthAuthorizationOptions {
@@ -12,7 +13,7 @@ class TryAuthAuthorizationOptions {
     public Scopes: string = null;
 }
 
-class TryAuthError {
+export class TryAuthError {
     public error: string = null;
 }
 
@@ -42,13 +43,14 @@ export default class TryAuth {
         // throw error
     }
 
-    public async CheckAuthorize(): Promise<TryAuthAuthorizationResponse | TryAuthError> {
+    public async CheckAuthorize(): Promise<TryAuthAuthorizationResponse> {
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = this.GetResponseData();
         const nonceValid = await this.ValidateIdTokenNonce(tryAuthAuthorizationResponse.IdToken);
         if (!nonceValid) {
             const tryAuthError: TryAuthError = new TryAuthError();
             tryAuthError.error = 'invalid nonce';
-            return tryAuthError;
+            tryAuthAuthorizationResponse.Error = tryAuthError;
+            return tryAuthAuthorizationResponse;
         }
         // validate expired iat
         // validate not before nbf
