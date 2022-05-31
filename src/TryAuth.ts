@@ -3,6 +3,7 @@ import JwtDecode from 'jwt-decode';
 export class TryAuthAuthorizationResponse {
     public AccessToken: string = null;
     public IdToken: string = null;
+    public ExpiresAt: Date = null;
     public Error: TryAuthError = null;
 }
 
@@ -34,6 +35,7 @@ export default class TryAuth {
     private readonly RESPONSE_TYPE_CODE: string = 'code';
     private readonly ACCESS_TOKEN: string = 'access_token';
     private readonly ID_TOKEN: string = 'id_token';
+    private readonly EXPIRES_AT: string = 'exp';
     constructor(public localStorage: LocalStorageBackend = new LocalStorage()) { }
 
     public async Authorize(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
@@ -52,8 +54,9 @@ export default class TryAuth {
             tryAuthAuthorizationResponse.Error = tryAuthError;
             return tryAuthAuthorizationResponse;
         }
-        // validate expired iat
-        // validate not before nbf
+        // validate expires at 'exp'
+        // validate expired 'iat'
+        // validate not before 'nbf'
         await this.localStorage.removeItem(this.NONCE_KEY);
         return tryAuthAuthorizationResponse;
     }
@@ -62,10 +65,17 @@ export default class TryAuth {
         const map = this.GetAuthorizationKeyValue();
         const access_token = map.get(this.ACCESS_TOKEN);
         const id_token = map.get(this.ID_TOKEN);
+        const expires_at = map.get(this.EXPIRES_AT);
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = new TryAuthAuthorizationResponse();
         tryAuthAuthorizationResponse.AccessToken = access_token;
         tryAuthAuthorizationResponse.IdToken = id_token;
+        tryAuthAuthorizationResponse.ExpiresAt = this.GetExpiresAt(expires_at);
         return tryAuthAuthorizationResponse;
+    }
+
+    private GetExpiresAt(expiresTick: string): Date {
+        const ticks = Number.parseInt(expiresTick) * 1000;
+        return new Date(ticks);
     }
 
     private async ValidateIdTokenNonce(idToken: string): Promise<boolean> {
