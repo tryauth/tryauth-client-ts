@@ -35,7 +35,6 @@ export default class TryAuth {
     private readonly RESPONSE_TYPE_CODE: string = 'code';
     private readonly ACCESS_TOKEN: string = 'access_token';
     private readonly ID_TOKEN: string = 'id_token';
-    private readonly EXPIRES_AT: string = 'exp';
     constructor(public localStorage: LocalStorageBackend = new LocalStorage()) { }
 
     public async Authorize(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
@@ -47,13 +46,15 @@ export default class TryAuth {
 
     public async CheckAuthorize(): Promise<TryAuthAuthorizationResponse> {
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = this.GetResponseData();
-        const nonceValid = await this.ValidateIdTokenNonce(tryAuthAuthorizationResponse.IdToken);
-        if (!nonceValid) {
+        const jwtPayload = this.GetJwtPayload(tryAuthAuthorizationResponse.IdToken);
+        const isNonceValid = await this.ValidateNonce(jwtPayload.nonce);
+        if (!isNonceValid) {
             const tryAuthError: TryAuthError = new TryAuthError();
             tryAuthError.error = 'invalid nonce';
             tryAuthAuthorizationResponse.Error = tryAuthError;
             return tryAuthAuthorizationResponse;
         }
+        tryAuthAuthorizationResponse.ExpiresAt = this.GetExpiresAt(jwtPayload.exp);
         // validate expires at 'exp'
         // validate expired 'iat'
         // validate not before 'nbf'
@@ -65,23 +66,24 @@ export default class TryAuth {
         const map = this.GetAuthorizationKeyValue();
         const access_token = map.get(this.ACCESS_TOKEN);
         const id_token = map.get(this.ID_TOKEN);
-        const expires_at = map.get(this.EXPIRES_AT);
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = new TryAuthAuthorizationResponse();
         tryAuthAuthorizationResponse.AccessToken = access_token;
         tryAuthAuthorizationResponse.IdToken = id_token;
-        tryAuthAuthorizationResponse.ExpiresAt = this.GetExpiresAt(expires_at);
         return tryAuthAuthorizationResponse;
     }
 
-    private GetExpiresAt(expiresTick: string): Date {
-        const ticks = Number.parseInt(expiresTick) * 1000;
-        return new Date(ticks);
+    private GetJwtPayload(idToken: string): JwtPayload {
+        return JwtDecode<JwtPayload>(idToken);
     }
 
-    private async ValidateIdTokenNonce(idToken: string): Promise<boolean> {
-        const jwtPayload = JwtDecode<JwtPayload>(idToken);
+    private GetExpiresAt(expiresAtTick: number): Date {
+        const tick = expiresAtTick * 1000;
+        return new Date(tick);
+    }
+
+    private async ValidateNonce(nonce: string): Promise<boolean> {
         const nonceStored = await this.localStorage.getItem(this.NONCE_KEY);
-        if (jwtPayload.nonce === nonceStored) {
+        if (nonce === nonceStored) {
             return true;
         }
         return false;
