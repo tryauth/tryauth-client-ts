@@ -3,13 +3,15 @@ import JwtDecode from 'jwt-decode';
 export class TryAuthAuthorizationResponse {
     public AccessToken: string = null;
     public IdToken: string = null;
-    public ExpiresAt: Date = null;
+    public Email: string = null;
+    public ExpiresAt: number = null;
     public Error: TryAuthError = null;
 }
 
 class TryAuthAuthorizationOptions {
     public ClientId: string = null;
     public IssuerEndpoint: string = null;
+    public RedirectUri: string = null;
     public ResponseType: string = null;
     public Scopes: string = null;
 }
@@ -26,6 +28,7 @@ interface JwtPayload {
     exp?: number;
     nbf?: number;
     iat?: number;
+    email?: string;
 }
 
 export default class TryAuth {
@@ -54,7 +57,9 @@ export default class TryAuth {
             tryAuthAuthorizationResponse.Error = tryAuthError;
             return tryAuthAuthorizationResponse;
         }
-        tryAuthAuthorizationResponse.ExpiresAt = this.GetExpiresAt(jwtPayload.exp);
+        // tryAuthAuthorizationResponse.ExpiresAt = this.GetExpiresAt(jwtPayload.exp);
+        tryAuthAuthorizationResponse.ExpiresAt = jwtPayload.exp * 1000;
+        tryAuthAuthorizationResponse.Email = jwtPayload.email;
         // validate expires at 'exp'
         // validate expired 'iat'
         // validate not before 'nbf'
@@ -158,7 +163,12 @@ export default class TryAuth {
         const nonce: string = await this.SetNonceLocalStorage();
         let authorizeEndpoint = this.GetConnectAuthorizeEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
         authorizeEndpoint = authorizeEndpoint + '?client_id=' + tryAuthAuthorizationOptions.ClientId;
-        authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(window.location.origin);
+        if (tryAuthAuthorizationOptions == null) {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(window.location.origin);
+        }
+        else {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
+        }
         authorizeEndpoint = authorizeEndpoint + '&response_type=' + tryAuthAuthorizationOptions.ResponseType;
         authorizeEndpoint = authorizeEndpoint + '&scope=' + tryAuthAuthorizationOptions.Scopes;
         authorizeEndpoint = authorizeEndpoint + '&nonce=' + nonce;
