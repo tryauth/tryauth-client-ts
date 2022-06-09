@@ -11,7 +11,7 @@ export class TryAuthAuthorizationResponse {
 class TryAuthAuthorizationOptions {
     public ClientId: string = null;
     public IssuerEndpoint: string = null;
-    public RedirectUri: string = null;
+    public RedirectUri?: string = null;
     public ResponseType: string = null;
     public Scopes: string = null;
 }
@@ -163,7 +163,7 @@ export default class TryAuth {
         const nonce: string = await this.SetNonceLocalStorage();
         let authorizeEndpoint = this.GetConnectAuthorizeEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
         authorizeEndpoint = authorizeEndpoint + '?client_id=' + tryAuthAuthorizationOptions.ClientId;
-        if (tryAuthAuthorizationOptions == null) {
+        if (tryAuthAuthorizationOptions.RedirectUri == null) {
             authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(window.location.origin);
         }
         else {
