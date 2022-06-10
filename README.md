@@ -56,7 +56,7 @@ tryAuth.Authorize({
 
 ## Check
 
-Allows to acquire a new token and/or access token for a user who has already authenticated aginst TryAuth for your domain. If the user is not authenticated, you will receive an error.
+Allows to acquire a new token and/or access token for a user who has already authenticated against TryAuth for your domain. If the user is not authenticated, you will receive an error.
 
 ```js
 const tryAuth: TryAuth = new TryAuth();
