@@ -50,7 +50,7 @@ tryAuth.Authorize({
 | :---------------------------- | ----------------- | ---------- |
 | `ClientId`| string (required) | The Client ID found on your Application settings page.
 | `IssuerEndpoint`| string (required) | Your TryAuth account domain such as `'example.tryauth.com'` or `'example.tryauth.com'`.
-| `responseType`| string (required) | Response type for all authentication requests. Only supports `token id_token`.
+| `ResponseType`| string (required) | Response type for all authentication requests. Only supports `token id_token`.
 | `Scopes`| string (required) | The default scopes used for all authorization requests.
 | `RedirectUri` | string | The URL where TryAuth will call back to with the result of a successful or failed authentication.
 
