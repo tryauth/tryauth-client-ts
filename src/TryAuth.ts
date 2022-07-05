@@ -14,6 +14,8 @@ class TryAuthAuthorizationOptions {
     public RedirectUri?: string = null;
     public ResponseType: string = null;
     public Scopes: string = null;
+    public ExternalIssuerEndpoint?: string = null;
+    public ExternalClientId?: string = null;
 }
 
 export class TryAuthError {
@@ -33,6 +35,7 @@ interface JwtPayload {
 
 export default class TryAuth {
     private readonly NONCE_KEY = 'tryauth_authorization_nonce_key';
+    private readonly REPONSE_URL_KEY = 'tryauth_response_url_key';
     private readonly RESPONSE_TYPE_IDTOKEN_TOKEN: string = 'id_token token';
     private readonly RESPONSE_TYPE_TOKEN_IDTOKEN: string = 'token id_token';
     private readonly RESPONSE_TYPE_CODE: string = 'code';
@@ -43,6 +46,13 @@ export default class TryAuth {
     public async Authorize(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
         if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_IDTOKEN_TOKEN || tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_TOKEN_IDTOKEN) {
             await this.AuthorizeIdTokenToken(tryAuthAuthorizationOptions);
+        }
+        // throw error
+    }
+
+    public async GetRedirect(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+        if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_IDTOKEN_TOKEN || tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_TOKEN_IDTOKEN) {
+            await this.GetRedirectAuthorizeIdTokenToken(tryAuthAuthorizationOptions);
         }
         // throw error
     }
@@ -65,6 +75,11 @@ export default class TryAuth {
         // validate not before 'nbf'
         await this.localStorage.removeItem(this.NONCE_KEY);
         return tryAuthAuthorizationResponse;
+    }
+
+    public async Redirect(): Promise<void> {
+        const urlToRedirect: string = await this.GetResponseLocationUrl();
+        window.location.href = urlToRedirect;
     }
 
     private GetResponseData(): TryAuthAuthorizationResponse {
@@ -116,7 +131,7 @@ export default class TryAuth {
         return new Promise<void>((resolve, reject) => {
             const xhr: XMLHttpRequest = new XMLHttpRequest();
             xhr.withCredentials = false; // add Authorize in header
-            xhr.onload = () => {
+            xhr.onload = async () => {
                 window.location.href = xhr.responseURL; // redirect to response location header of authorize endpoint
             };
             xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
@@ -125,6 +140,24 @@ export default class TryAuth {
                 xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
             }
             //xhr.send(JSON.stringify(request));
+            xhr.send(null);
+        });
+    }
+
+    private async GetRedirectAuthorizeIdTokenToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+        const headers = this.SetDefaultHeaders();
+        const authorizeEndpoint = await this.GetAuthorizeEndpoint(tryAuthAuthorizationOptions);
+        return new Promise<void>((resolve, reject) => {
+            const xhr: XMLHttpRequest = new XMLHttpRequest();
+            xhr.withCredentials = false; // add Authorize in header
+            xhr.onload = async () => {
+                await this.SetResponseLocationUrl(xhr.responseText);
+            };
+            xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
+            for (let i: number = 0; i < headers.length; i++) {
+                const header: [string, string] = headers[i];
+                xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+            }
             xhr.send(null);
         });
     }
@@ -140,6 +173,14 @@ export default class TryAuth {
         const nonce: string = crypto.Create();
         await this.localStorage.setItem(this.NONCE_KEY, nonce);
         return nonce;
+    }
+
+    private async SetResponseLocationUrl(responseUrl: string): Promise<void> {
+        await this.localStorage.setItem(this.REPONSE_URL_KEY, responseUrl);
+    }
+
+    private async GetResponseLocationUrl(): Promise<string> {
+        return await this.localStorage.getItem(this.REPONSE_URL_KEY);
     }
 
     private GetHeaderValue(headers: [string, string][], name: string): string {
@@ -168,6 +209,12 @@ export default class TryAuth {
         }
         else {
             authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
+        }
+        if (tryAuthAuthorizationOptions.ExternalIssuerEndpoint != null) {
+            authorizeEndpoint = authorizeEndpoint + '&external_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.ExternalIssuerEndpoint);
+        }
+        if (tryAuthAuthorizationOptions.ExternalClientId != null) {
+            authorizeEndpoint = authorizeEndpoint + '&external_client_id=' + tryAuthAuthorizationOptions.ExternalClientId;
         }
         authorizeEndpoint = authorizeEndpoint + '&response_type=' + tryAuthAuthorizationOptions.ResponseType;
         authorizeEndpoint = authorizeEndpoint + '&scope=' + tryAuthAuthorizationOptions.Scopes;
