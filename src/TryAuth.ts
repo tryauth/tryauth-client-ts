@@ -77,9 +77,23 @@ export default class TryAuth {
         return tryAuthAuthorizationResponse;
     }
 
+    public async CheckRedirect(): Promise<TryAuthAuthorizationResponse> {
+        const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = this.GetResponseData();
+        const jwtPayload = this.GetJwtPayload(tryAuthAuthorizationResponse.IdToken);
+        tryAuthAuthorizationResponse.ExpiresAt = jwtPayload.exp * 1000;
+        tryAuthAuthorizationResponse.Email = jwtPayload.email;
+        // validate expires at 'exp'
+        // validate expired 'iat'
+        // validate not before 'nbf'
+        await this.localStorage.removeItem(this.NONCE_KEY);
+        return tryAuthAuthorizationResponse;
+    }
+
     public async Redirect(): Promise<void> {
         const urlToRedirect: string = await this.GetResponseLocationUrl();
-        window.location.href = urlToRedirect;
+        if (urlToRedirect != null && urlToRedirect.length > 0) {
+            window.location.href = urlToRedirect;
+        }
     }
 
     private GetResponseData(): TryAuthAuthorizationResponse {
