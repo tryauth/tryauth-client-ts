@@ -50,9 +50,9 @@ export default class TryAuth {
         // throw error
     }
 
-    public async GetRedirect(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+    public GetRedirect(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions) {
         if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_IDTOKEN_TOKEN || tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_TOKEN_IDTOKEN) {
-            await this.GetRedirectAuthorizeIdTokenToken(tryAuthAuthorizationOptions);
+            this.GetRedirectAuthorizeIdTokenToken(tryAuthAuthorizationOptions);
         }
         // throw error
     }
@@ -77,7 +77,7 @@ export default class TryAuth {
         return tryAuthAuthorizationResponse;
     }
 
-    public async CheckRedirect(): Promise<TryAuthAuthorizationResponse> {
+    public CheckRedirect(): TryAuthAuthorizationResponse {
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = this.GetResponseData();
         const jwtPayload = this.GetJwtPayload(tryAuthAuthorizationResponse.IdToken);
         tryAuthAuthorizationResponse.ExpiresAt = jwtPayload.exp * 1000;
@@ -85,12 +85,12 @@ export default class TryAuth {
         // validate expires at 'exp'
         // validate expired 'iat'
         // validate not before 'nbf'
-        await this.localStorage.removeItem(this.NONCE_KEY);
+        this.localStorage.removeItemSync(this.NONCE_KEY);
         return tryAuthAuthorizationResponse;
     }
 
-    public async Redirect(): Promise<void> {
-        const urlToRedirect: string = await this.GetResponseLocationUrl();
+    private Redirect(): void {
+        const urlToRedirect: string = this.GetResponseLocationUrlSync();
         if (urlToRedirect != null && urlToRedirect.length > 0) {
             window.location.href = urlToRedirect;
         }
@@ -158,22 +158,20 @@ export default class TryAuth {
         });
     }
 
-    private async GetRedirectAuthorizeIdTokenToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+    private GetRedirectAuthorizeIdTokenToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): void {
         const headers = this.SetDefaultHeaders();
-        const authorizeEndpoint = await this.GetAuthorizeEndpoint(tryAuthAuthorizationOptions);
-        return new Promise<void>((resolve, reject) => {
-            const xhr: XMLHttpRequest = new XMLHttpRequest();
-            xhr.withCredentials = false; // add Authorize in header
-            xhr.onload = async () => {
-                await this.SetResponseLocationUrl(xhr.responseText);
-            };
-            xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
-            for (let i: number = 0; i < headers.length; i++) {
-                const header: [string, string] = headers[i];
-                xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
-            }
-            xhr.send(null);
-        });
+        const authorizeEndpoint = this.GetAuthorizeEndpointSync(tryAuthAuthorizationOptions);
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
+        xhr.withCredentials = false; // add Authorize in header
+        xhr.onload = () => {
+            window.location.href = xhr.responseText;
+        };
+        xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
+        for (let i: number = 0; i < headers.length; i++) {
+            const header: [string, string] = headers[i];
+            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+        }
+        xhr.send(null);
     }
 
     private SetDefaultHeaders(): [string, string][] {
@@ -189,12 +187,23 @@ export default class TryAuth {
         return nonce;
     }
 
+    private SetNonceLocalStorageSync(): string {
+        const crypto = new Crypto(30);
+        const nonce: string = crypto.Create();
+        this.localStorage.setItemSync(this.NONCE_KEY, nonce);
+        return nonce;
+    }
+
     private async SetResponseLocationUrl(responseUrl: string): Promise<void> {
         await this.localStorage.setItem(this.REPONSE_URL_KEY, responseUrl);
     }
 
     private async GetResponseLocationUrl(): Promise<string> {
         return await this.localStorage.getItem(this.REPONSE_URL_KEY);
+    }
+
+    private GetResponseLocationUrlSync(): string {
+        return this.localStorage.getItemSync(this.REPONSE_URL_KEY);
     }
 
     private GetHeaderValue(headers: [string, string][], name: string): string {
@@ -216,6 +225,28 @@ export default class TryAuth {
 
     private async GetAuthorizeEndpoint(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<string> {
         const nonce: string = await this.SetNonceLocalStorage();
+        let authorizeEndpoint = this.GetConnectAuthorizeEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
+        authorizeEndpoint = authorizeEndpoint + '?client_id=' + tryAuthAuthorizationOptions.ClientId;
+        if (tryAuthAuthorizationOptions.RedirectUri == null) {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(window.location.origin);
+        }
+        else {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
+        }
+        if (tryAuthAuthorizationOptions.ExternalIssuerEndpoint != null) {
+            authorizeEndpoint = authorizeEndpoint + '&external_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.ExternalIssuerEndpoint);
+        }
+        if (tryAuthAuthorizationOptions.ExternalClientId != null) {
+            authorizeEndpoint = authorizeEndpoint + '&external_client_id=' + tryAuthAuthorizationOptions.ExternalClientId;
+        }
+        authorizeEndpoint = authorizeEndpoint + '&response_type=' + tryAuthAuthorizationOptions.ResponseType;
+        authorizeEndpoint = authorizeEndpoint + '&scope=' + tryAuthAuthorizationOptions.Scopes;
+        authorizeEndpoint = authorizeEndpoint + '&nonce=' + nonce;
+        return authorizeEndpoint;
+    }
+
+    private GetAuthorizeEndpointSync(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): string {
+        const nonce: string = this.SetNonceLocalStorageSync();
         let authorizeEndpoint = this.GetConnectAuthorizeEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
         authorizeEndpoint = authorizeEndpoint + '?client_id=' + tryAuthAuthorizationOptions.ClientId;
         if (tryAuthAuthorizationOptions.RedirectUri == null) {
@@ -298,14 +329,17 @@ interface ILocalStorage {
 abstract class LocalStorageBackend {
     //When passed a key `name`, will return that key's value.
     public abstract getItem(name: string): Promise<string | null>;
+    public abstract getItemSync(name: string): string | null;
     //When passed a key `name`, will remove that key from the storage.
     public abstract removeItem(name: string): Promise<void>;
+    public abstract removeItemSync(name: string): void;
     //When invoked, will empty all keys out of the storage.
     public abstract clear(): Promise<void>;
     //The setItem() method of the `ILocalStorage` interface,
     //when passed a key name and value, will add that key to the storage,
     //or update that key's value if it already exists.
     public abstract setItem(name: string, value: string): Promise<void>;
+    public abstract setItemSync(name: string, value: string): void;
 }
 
 class LocalStorage extends LocalStorageBackend {
@@ -324,11 +358,22 @@ class LocalStorage extends LocalStorageBackend {
             }
         });
     }
+    public getItemSync(name: string): string | null {
+        const value = this._storage.getItem(name);
+        if (value) {
+            return value;
+        } else {
+            return null;
+        }
+    }
     public removeItem(name: string): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             this._storage.removeItem(name);
             resolve();
         });
+    }
+    public removeItemSync(name: string): void {
+        this._storage.removeItem(name);
     }
     public clear(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
@@ -341,5 +386,8 @@ class LocalStorage extends LocalStorageBackend {
             this._storage.setItem(name, value);
             resolve();
         });
+    }
+    public setItemSync(name: string, value: string): void {
+        this._storage.setItem(name, value);
     }
 }
