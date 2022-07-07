@@ -233,8 +233,9 @@ export default class TryAuth {
         else {
             authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
         }
-        if (tryAuthAuthorizationOptions.ExternalIssuerEndpoint != null) {
-            authorizeEndpoint = authorizeEndpoint + '&external_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.ExternalIssuerEndpoint);
+        const ensureExternalIssuerEndpoint = this.EnsureExternalIssuerEndpoint(tryAuthAuthorizationOptions.ExternalIssuerEndpoint);
+        if (ensureExternalIssuerEndpoint != null) {
+            authorizeEndpoint = authorizeEndpoint + '&external_uri=' + encodeURIComponent(ensureExternalIssuerEndpoint);
         }
         if (tryAuthAuthorizationOptions.ExternalClientId != null) {
             authorizeEndpoint = authorizeEndpoint + '&external_client_id=' + tryAuthAuthorizationOptions.ExternalClientId;
@@ -255,8 +256,9 @@ export default class TryAuth {
         else {
             authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
         }
-        if (tryAuthAuthorizationOptions.ExternalIssuerEndpoint != null) {
-            authorizeEndpoint = authorizeEndpoint + '&external_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.ExternalIssuerEndpoint);
+        const ensureExternalIssuerEndpoint = this.EnsureExternalIssuerEndpoint(tryAuthAuthorizationOptions.ExternalIssuerEndpoint);
+        if (ensureExternalIssuerEndpoint != null) {
+            authorizeEndpoint = authorizeEndpoint + '&external_uri=' + encodeURIComponent(ensureExternalIssuerEndpoint);
         }
         if (tryAuthAuthorizationOptions.ExternalClientId != null) {
             authorizeEndpoint = authorizeEndpoint + '&external_client_id=' + tryAuthAuthorizationOptions.ExternalClientId;
@@ -265,6 +267,17 @@ export default class TryAuth {
         authorizeEndpoint = authorizeEndpoint + '&scope=' + tryAuthAuthorizationOptions.Scopes;
         authorizeEndpoint = authorizeEndpoint + '&nonce=' + nonce;
         return authorizeEndpoint;
+    }
+
+    private EnsureExternalIssuerEndpoint(externalIssuerEndpoint?: string): string {
+        if (externalIssuerEndpoint == null)
+            return '';
+
+        if (externalIssuerEndpoint.endsWith('/'))
+            externalIssuerEndpoint = externalIssuerEndpoint + 'authorize';
+        else
+            externalIssuerEndpoint = externalIssuerEndpoint + '/authorize';
+        return externalIssuerEndpoint;
     }
 
     private EnsureASCII(data: string): string {
