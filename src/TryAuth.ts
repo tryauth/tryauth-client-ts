@@ -8,12 +8,37 @@ export class TryAuthAuthorizationResponse {
     public Error: TryAuthError = null;
 }
 
+export class TryAuthAuthorizationCodeTokenResponse {
+    public AccessToken: string = null;
+    public IdToken: string = null;
+    public RefreshToken: string = null;
+    public TokenType: string = null;
+    public ExpiresIn: number = null;
+    public Error: TryAuthError = null;
+}
+
+export class TryAuthAuthorizationCodeResponse {
+    public Code: string = null;
+    public Scope: string = null;
+    public State: string = null;
+}
+
+export class TryAuthPkceCode {
+    public CodeVerifier: string = null;
+    public CodeChallenge: string = null;
+}
+
 class TryAuthAuthorizationOptions {
-    public ClientId: string = null;
+    public ClientId?: string = null;
+    public ClientSecret?: string = null;
     public IssuerEndpoint: string = null;
     public RedirectUri?: string = null;
-    public ResponseType: string = null;
-    public Scopes: string = null;
+    public ResponseType?: string = null;
+    public Scopes?: string = null;
+    public CodeChallenge?: string = null;
+    public IdToken?: string = null;
+    public State?: string = null;
+    public RefreshToken?: string = null;
     public ExternalIssuerEndpoint?: string = null;
     public ExternalClientId?: string = null;
 }
@@ -39,8 +64,17 @@ export default class TryAuth {
     private readonly RESPONSE_TYPE_IDTOKEN_TOKEN: string = 'id_token token';
     private readonly RESPONSE_TYPE_TOKEN_IDTOKEN: string = 'token id_token';
     private readonly RESPONSE_TYPE_CODE: string = 'code';
+    private readonly GRANT_TYPE: string = 'grant_type';
+    private readonly AUTHORIZATION_CODE: string = 'authorization_code';
+    private readonly CLIENT_ID: string = 'client_id';
+    private readonly CLIENT_SECRET: string = 'client_secret';
+    private readonly REDIRECT_URI: string = 'redirect_uri';
     private readonly ACCESS_TOKEN: string = 'access_token';
     private readonly ID_TOKEN: string = 'id_token';
+    private readonly SCOPE: string = 'scope';
+    private readonly STATE: string = 'session_state';
+    private readonly CODE_VERIFIER: string = 'code_verifier';
+    private readonly REFRESH_TOKEN: string = 'refresh_token';
     constructor(public localStorage: LocalStorageBackend = new LocalStorage()) { }
 
     public async Authorize(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
@@ -57,6 +91,24 @@ export default class TryAuth {
         // throw error
     }
 
+    public async GetAuthorizationCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+        if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_CODE) {
+            await this.GetRedirectAuthorizeCode(tryAuthAuthorizationOptions);
+        }
+    }
+
+    public async LogoutAuthorizationCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+        if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_CODE) {
+            await this.GetLogoutAuthorizationCode(tryAuthAuthorizationOptions);
+        }
+    }
+
+    public LogoutEndSessionAuthorizationCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): void {
+        if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_CODE) {
+            this.GetLogoutEndSessionAuthorizationCode(tryAuthAuthorizationOptions);
+        }
+    }
+
     public async CheckAuthorize(): Promise<TryAuthAuthorizationResponse> {
         const tryAuthAuthorizationResponse: TryAuthAuthorizationResponse = this.GetResponseData();
         const jwtPayload = this.GetJwtPayload(tryAuthAuthorizationResponse.IdToken);
@@ -67,7 +119,6 @@ export default class TryAuth {
             tryAuthAuthorizationResponse.Error = tryAuthError;
             return tryAuthAuthorizationResponse;
         }
-        // tryAuthAuthorizationResponse.ExpiresAt = this.GetExpiresAt(jwtPayload.exp);
         tryAuthAuthorizationResponse.ExpiresAt = jwtPayload.exp * 1000;
         tryAuthAuthorizationResponse.Email = jwtPayload.email;
         // validate expires at 'exp'
@@ -89,6 +140,49 @@ export default class TryAuth {
         return tryAuthAuthorizationResponse;
     }
 
+    public GetSilentAuthorizationCodeToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): TryAuthAuthorizationCodeTokenResponse {
+        const tryAuthAuthorizationCodeResponse: TryAuthAuthorizationCodeResponse = this.GetAuthorizationCodeReponseData();
+        const response: string = this.PostAuthorizationCodeToken(tryAuthAuthorizationOptions, tryAuthAuthorizationCodeResponse);
+        const tryAuthSerialize = new TryAuthSerialize();
+        const serialized = tryAuthSerialize.Deserialize(response);
+
+        const tryAuthAuthorizationCodeTokenResponse = new TryAuthAuthorizationCodeTokenResponse();
+        if (serialized.access_token != null && serialized.access_token != undefined) {
+            tryAuthAuthorizationCodeTokenResponse.AccessToken = serialized.access_token;
+            tryAuthAuthorizationCodeTokenResponse.IdToken = serialized.id_token;
+            if (serialized.refresh_token != null && serialized.refresh_token != undefined)
+                tryAuthAuthorizationCodeTokenResponse.RefreshToken = serialized.refresh_token;
+            tryAuthAuthorizationCodeTokenResponse.ExpiresIn = serialized.expires_in;
+            tryAuthAuthorizationCodeTokenResponse.TokenType = serialized.token_type;
+        }
+        else {
+            tryAuthAuthorizationCodeTokenResponse.Error = new TryAuthError();
+            tryAuthAuthorizationCodeTokenResponse.Error.error = serialized.error;
+        }
+        return tryAuthAuthorizationCodeTokenResponse;
+    }
+
+    public GetAuthorizationCodeRefreshToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): TryAuthAuthorizationCodeTokenResponse {
+        const response: string = this.PostAuthorizationCodeRefreshToken(tryAuthAuthorizationOptions);
+        const tryAuthSerialize = new TryAuthSerialize();
+        const serialized = tryAuthSerialize.Deserialize(response);
+
+        const tryAuthAuthorizationCodeTokenResponse = new TryAuthAuthorizationCodeTokenResponse();
+        if (serialized.access_token != null && serialized.access_token != undefined) {
+            tryAuthAuthorizationCodeTokenResponse.AccessToken = serialized.access_token;
+            tryAuthAuthorizationCodeTokenResponse.IdToken = serialized.id_token;
+            if (serialized.refresh_token != null && serialized.refresh_token != undefined)
+                tryAuthAuthorizationCodeTokenResponse.RefreshToken = serialized.refresh_token;
+            tryAuthAuthorizationCodeTokenResponse.ExpiresIn = serialized.expires_in;
+            tryAuthAuthorizationCodeTokenResponse.TokenType = serialized.token_type;
+        }
+        else {
+            tryAuthAuthorizationCodeTokenResponse.Error = new TryAuthError();
+            tryAuthAuthorizationCodeTokenResponse.Error.error = serialized.error;
+        }
+        return tryAuthAuthorizationCodeTokenResponse;
+    }
+
     private Redirect(): void {
         const urlToRedirect: string = this.GetResponseLocationUrlSync();
         if (urlToRedirect != null && urlToRedirect.length > 0) {
@@ -104,6 +198,18 @@ export default class TryAuth {
         tryAuthAuthorizationResponse.AccessToken = access_token;
         tryAuthAuthorizationResponse.IdToken = id_token;
         return tryAuthAuthorizationResponse;
+    }
+
+    private GetAuthorizationCodeReponseData(): TryAuthAuthorizationCodeResponse {
+        const map = this.GetAuthorizationCodeKeyValue();
+        const code = map.get(this.RESPONSE_TYPE_CODE);
+        const scope = map.get(decodeURIComponent(this.SCOPE));
+        const state = map.get(this.STATE);
+        const tryAuthAuthorizationCodeResponse: TryAuthAuthorizationCodeResponse = new TryAuthAuthorizationCodeResponse();
+        tryAuthAuthorizationCodeResponse.Code = code;
+        tryAuthAuthorizationCodeResponse.Scope = scope;
+        tryAuthAuthorizationCodeResponse.State = state;
+        return tryAuthAuthorizationCodeResponse;
     }
 
     private GetJwtPayload(idToken: string): JwtPayload {
@@ -139,6 +245,19 @@ export default class TryAuth {
         return map;
     }
 
+    private GetAuthorizationCodeKeyValue(): Map<string, string> {
+        let hash: string = window.location.search; // this will receive the '#code, scope and session_state ...'
+        hash = hash.substring(1); // remove the '?'
+        const map = new Map<string, string>();
+        const split: string[] = hash.split('&');
+        for (let i = 0; i < split.length; i++) {
+            const keys = split[i];
+            const keyValue = keys.split('=');
+            map.set(keyValue[0], keyValue[1]);
+        }
+        return map;
+    }
+
     private async AuthorizeIdTokenToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
         const headers = this.SetDefaultHeaders();
         const authorizeEndpoint = await this.GetAuthorizeEndpoint(tryAuthAuthorizationOptions);
@@ -153,7 +272,6 @@ export default class TryAuth {
                 const header: [string, string] = headers[i];
                 xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
             }
-            //xhr.send(JSON.stringify(request));
             xhr.send(null);
         });
     }
@@ -164,7 +282,7 @@ export default class TryAuth {
         const xhr: XMLHttpRequest = new XMLHttpRequest();
         xhr.withCredentials = false; // add Authorize in header
         xhr.onload = () => {
-            window.location.href = xhr.responseText;
+            window.location.href = xhr.responseURL; // redirect to response location header of authorize endpoint
         };
         xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
         for (let i: number = 0; i < headers.length; i++) {
@@ -172,6 +290,109 @@ export default class TryAuth {
             xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
         }
         xhr.send(null);
+    }
+
+    private async GetRedirectAuthorizeCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+        const crypto = new Crypto();
+        const tryAuthPkceCode = await crypto.GeneratePkceCodes();
+        tryAuthAuthorizationOptions.CodeChallenge = tryAuthPkceCode.CodeChallenge;
+        await this.SetCodeVerifier(tryAuthPkceCode.CodeVerifier);
+        
+        let authorizeEndpoint = this.GetAuthorizationCodeEndpoint(tryAuthAuthorizationOptions);
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
+        xhr.withCredentials = false; // add Authorize in header
+        xhr.onload = () => {
+            window.location.href = xhr.responseURL; // redirect to response location header of authorize endpoint
+        };
+        xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
+        const headers = this.SetDefaultHeaders();
+        for (let i: number = 0; i < headers.length; i++) {
+            const header: [string, string] = headers[i];
+            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+        }
+        xhr.send(null);
+    }
+
+    private async GetLogoutAuthorizationCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
+        const crypto = new Crypto();
+        const tryAuthPkceCode = await crypto.GeneratePkceCodes();
+        tryAuthAuthorizationOptions.CodeChallenge = tryAuthPkceCode.CodeChallenge;
+        await this.SetCodeVerifier(tryAuthPkceCode.CodeVerifier);
+
+        let authorizeEndpoint = this.GetLogoutEndpoint(tryAuthAuthorizationOptions);
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
+        xhr.withCredentials = false; // add Authorize in header
+        xhr.onload = () => {
+            window.location.href = xhr.responseURL; // redirect to response location header of authorize endpoint
+        };
+        xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
+        const headers = this.SetDefaultHeaders();
+        for (let i: number = 0; i < headers.length; i++) {
+            const header: [string, string] = headers[i];
+            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+        }
+        xhr.send(null);
+    }
+
+    private GetLogoutEndSessionAuthorizationCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): void {
+        let authorizeEndpoint = this.GetLogoutEndSessionEndpoint(tryAuthAuthorizationOptions);
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
+        xhr.withCredentials = false; // add Authorize in header
+        xhr.onload = () => {
+            window.location.href = xhr.responseURL; // redirect to response location header of authorize endpoint
+        };
+        xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
+        const headers = this.SetDefaultHeaders();
+        for (let i: number = 0; i < headers.length; i++) {
+            const header: [string, string] = headers[i];
+            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+        }
+        xhr.send(null);
+    }
+
+    private PostAuthorizationCodeToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions, tryAuthAuthorizationCodeResponse: TryAuthAuthorizationCodeResponse): string {
+        const headers = this.SetDefaultHeaders();
+        const codeVerifier = this.GetCodeVerifier();
+        const parameters = new URLSearchParams();
+        parameters.append(this.GRANT_TYPE, this.AUTHORIZATION_CODE);
+        parameters.append(this.CLIENT_ID, tryAuthAuthorizationOptions.ClientId);
+        parameters.append(this.CLIENT_SECRET, tryAuthAuthorizationOptions.ClientSecret);
+        parameters.append(this.RESPONSE_TYPE_CODE, tryAuthAuthorizationCodeResponse.Code);
+        parameters.append(this.CODE_VERIFIER, codeVerifier);
+        
+        if (tryAuthAuthorizationOptions.RedirectUri == null || tryAuthAuthorizationOptions.RedirectUri == undefined || tryAuthAuthorizationOptions.RedirectUri === '')
+            parameters.append(this.REDIRECT_URI, window.location.origin);
+        else
+            parameters.append(this.REDIRECT_URI, tryAuthAuthorizationOptions.RedirectUri);
+        const tokenEndpoint = this.GetConnectTokenEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
+        xhr.withCredentials = false; // add Authorize in header
+        xhr.open('POST', tokenEndpoint, false); // call the token endpoint synchronous (false)
+        for (let i: number = 0; i < headers.length; i++) {
+            const header: [string, string] = headers[i];
+            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+        }
+        xhr.send(parameters);
+        return xhr.responseText;
+    }
+
+    private PostAuthorizationCodeRefreshToken(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): string {
+        const headers = this.SetDefaultHeaders();
+        const parameters = new URLSearchParams();
+        parameters.append(this.GRANT_TYPE, this.REFRESH_TOKEN);
+        parameters.append(this.CLIENT_ID, tryAuthAuthorizationOptions.ClientId);
+        parameters.append(this.CLIENT_SECRET, tryAuthAuthorizationOptions.ClientSecret);
+        parameters.append(this.REFRESH_TOKEN, tryAuthAuthorizationOptions.RefreshToken);
+        const tokenEndpoint = this.GetConnectTokenEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
+        xhr.withCredentials = false; // add Authorize in header
+        xhr.open('POST', tokenEndpoint, false); // call the token endpoint synchronous (false)
+        for (let i: number = 0; i < headers.length; i++) {
+            const header: [string, string] = headers[i];
+            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+        }
+        xhr.send(parameters);
+        return xhr.responseText;
     }
 
     private SetDefaultHeaders(): [string, string][] {
@@ -198,6 +419,14 @@ export default class TryAuth {
         await this.localStorage.setItem(this.REPONSE_URL_KEY, responseUrl);
     }
 
+    private SetCodeVerifier(code: string): void {
+        this.localStorage.setItemSync(this.CODE_VERIFIER, code);
+    }
+
+    private GetCodeVerifier(): string {
+        return this.localStorage.getItemSync(this.CODE_VERIFIER);
+    }
+
     private async GetResponseLocationUrl(): Promise<string> {
         return await this.localStorage.getItem(this.REPONSE_URL_KEY);
     }
@@ -221,6 +450,14 @@ export default class TryAuth {
 
     private GetConnectTokenEndpoint(issuerEndpoint: string): string {
         return issuerEndpoint + '/connect/token';
+    }
+
+    private LogoutEndpoint(issuerEndpoint: string): string {
+        return issuerEndpoint + '/Identity/Logout';
+    }
+
+    private EndSessionEndpoint(issuerEndpoint: string): string {
+        return issuerEndpoint + '/connect/endsession';
     }
 
     private async GetAuthorizeEndpoint(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<string> {
@@ -269,6 +506,51 @@ export default class TryAuth {
         return authorizeEndpoint;
     }
 
+    private GetAuthorizationCodeEndpoint(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): string {
+        let authorizeEndpoint = this.GetConnectAuthorizeEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
+        authorizeEndpoint = authorizeEndpoint + '?client_id=' + tryAuthAuthorizationOptions.ClientId;
+        if (tryAuthAuthorizationOptions.RedirectUri == null) {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(window.location.origin);
+        }
+        else {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
+        }
+        authorizeEndpoint = authorizeEndpoint + '&response_type=' + tryAuthAuthorizationOptions.ResponseType;
+        authorizeEndpoint = authorizeEndpoint + '&scope=' + tryAuthAuthorizationOptions.Scopes;
+        if (tryAuthAuthorizationOptions.CodeChallenge != null) {
+            authorizeEndpoint = authorizeEndpoint + '&code_challenge=' + tryAuthAuthorizationOptions.CodeChallenge;
+            authorizeEndpoint = authorizeEndpoint + '&code_challenge_method=S256';
+        }
+        return authorizeEndpoint;
+    }
+
+    private GetLogoutEndpoint(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): string {
+        let authorizeEndpoint = this.LogoutEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
+        authorizeEndpoint = authorizeEndpoint + '?returnUrl=' + encodeURIComponent('/connect/authorize');
+        authorizeEndpoint = authorizeEndpoint + '&client_id=' + tryAuthAuthorizationOptions.ClientId;
+        if (tryAuthAuthorizationOptions.RedirectUri == null) {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(window.location.origin);
+        }
+        else {
+            authorizeEndpoint = authorizeEndpoint + '&redirect_uri=' + encodeURIComponent(tryAuthAuthorizationOptions.RedirectUri);
+        }
+        authorizeEndpoint = authorizeEndpoint + '&response_type=' + tryAuthAuthorizationOptions.ResponseType;
+        authorizeEndpoint = authorizeEndpoint + '&scope=' + tryAuthAuthorizationOptions.Scopes;
+        if (tryAuthAuthorizationOptions.CodeChallenge != null) {
+            authorizeEndpoint = authorizeEndpoint + '&code_challenge=' + tryAuthAuthorizationOptions.CodeChallenge;
+            authorizeEndpoint = authorizeEndpoint + '&code_challenge_method=S256';
+        }
+        return authorizeEndpoint;
+    }
+
+    private GetLogoutEndSessionEndpoint(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): string {
+        let authorizeEndpoint = this.EndSessionEndpoint(tryAuthAuthorizationOptions.IssuerEndpoint);
+        authorizeEndpoint = authorizeEndpoint + '?id_token_hint=' + tryAuthAuthorizationOptions.IdToken;
+        authorizeEndpoint = authorizeEndpoint + '&state=' + tryAuthAuthorizationOptions.State;
+        authorizeEndpoint = authorizeEndpoint + '&post_logout_redirect_uri=' + tryAuthAuthorizationOptions.RedirectUri;
+        return authorizeEndpoint;
+    }
+
     private EnsureExternalIssuerEndpoint(externalIssuerEndpoint?: string): string {
         if (externalIssuerEndpoint == null)
             return '';
@@ -310,7 +592,32 @@ export default class TryAuth {
 class Crypto {
     private _size: number = null;
     private _charset: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    constructor(size: number) {
+    /**
+     * The maximum length for a code verifier for the best security we can offer.
+     * Please note the NOTE section of RFC 7636 § 4.1 - the length must be >= 43,
+     * but <= 128, **after** base64 url encoding. This means 32 code verifier bytes
+     * encoded will be 43 bytes, or 96 bytes encoded will be 128 bytes. So 96 bytes
+     * is the highest valid value that can be used.
+     */
+    private _code_verifier_length: number = 96;
+    /**
+     * Character set to generate code verifier defined in rfc7636.
+     */
+    private _pkce_charset: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+
+    /**
+     * Implements *base64url-encode* (RFC 4648 § 5) without padding, which is NOT
+     * the same as regular base64 encoding.
+     */
+    private base64urlEncode = (value: string): string => {
+        let base64 = btoa(value);
+        base64 = base64.replace(/\+/g, '-');
+        base64 = base64.replace(/\//g, '_');
+        base64 = base64.replace(/=/g, '');
+        return base64;
+    };
+
+    constructor(size?: number) {
         this._size = size;
     }
     public Create(): string {
@@ -319,6 +626,26 @@ class Crypto {
             buffer[i] = (Math.random() * this._charset.length) | 0;
         }
         return this.BufferToString(buffer);
+    }
+
+    public Buffer: ArrayBuffer = null;
+    public async GeneratePkceCodes(): Promise<TryAuthPkceCode> {
+        const uint = new Uint32Array(this._code_verifier_length);
+        crypto.getRandomValues(uint);
+        const codeVerifier = this.base64urlEncode(Array.from(uint).map((num: number) => this._pkce_charset[num % this._pkce_charset.length]).join(''));
+        const buffer = await crypto.subtle.digest('SHA-256', (new TextEncoder()).encode(codeVerifier));
+        const hash = new Uint8Array(buffer);
+        let binary = '';
+        const hashLength = hash.byteLength;
+        for (let i: number = 0; i < hashLength; i++) {
+            binary += String.fromCharCode(hash[i]);
+        }
+        const codeChallenge = this.base64urlEncode(binary);
+        const tryAuthPkceCode = new TryAuthPkceCode();
+        tryAuthPkceCode.CodeVerifier = codeVerifier;
+        tryAuthPkceCode.CodeChallenge = codeChallenge;
+        
+        return tryAuthPkceCode;
     }
 
     private BufferToString(buffer: Uint8Array): string {
@@ -402,5 +729,38 @@ class LocalStorage extends LocalStorageBackend {
     }
     public setItemSync(name: string, value: string): void {
         this._storage.setItem(name, value);
+    }
+}
+
+class TryAuthSerialize {
+    private readonly JSON_START = '{';
+    private readonly JSON_END = '}';
+    private readonly JSON_ARRAY_START = '[';
+    private readonly JSON_ARRAY_END = ']';
+
+    private IsJson(data: string): boolean {
+        return ((this.IsJsonInstance(data)) || (this.IsJsonArray(data)));
+    }
+
+    private IsJsonInstance(data: string): boolean {
+        if (data === null)
+            return (false);
+        if (data.length < 2)
+            return (false);
+        return ((data.substr != null) && (data.substr(0, 1) == this.JSON_START) && (data.substr(data.length - 1, 1) == this.JSON_END));
+    }
+
+    private IsJsonArray(data: string): boolean {
+        if (data === null)
+            return (false);
+        if (data.length < 2)
+            return (false);
+        return ((data.substr != null) && (data.substr(0, 1) == this.JSON_ARRAY_START) && (data.substr(data.length - 1, 1) == this.JSON_ARRAY_END));
+    }
+
+    public Deserialize(data: string): any {
+        if (!this.IsJson(data))
+            return (data);
+        return (JSON.parse(data));
     }
 }
