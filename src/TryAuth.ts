@@ -41,6 +41,7 @@ class TryAuthAuthorizationOptions {
     public RefreshToken?: string = null;
     public ExternalIssuerEndpoint?: string = null;
     public ExternalClientId?: string = null;
+    public RequirePkce?: boolean = false;
 }
 
 export class TryAuthError {
@@ -295,22 +296,12 @@ export default class TryAuth {
     private async GetRedirectAuthorizeCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
         const crypto = new Crypto();
         const tryAuthPkceCode = await crypto.GeneratePkceCodes();
-        tryAuthAuthorizationOptions.CodeChallenge = tryAuthPkceCode.CodeChallenge;
+        if (tryAuthAuthorizationOptions.RequirePkce)
+            tryAuthAuthorizationOptions.CodeChallenge = tryAuthPkceCode.CodeChallenge;
         await this.SetCodeVerifier(tryAuthPkceCode.CodeVerifier);
         
         let authorizeEndpoint = this.GetAuthorizationCodeEndpoint(tryAuthAuthorizationOptions);
-        const xhr: XMLHttpRequest = new XMLHttpRequest();
-        xhr.withCredentials = false; // add Authorize in header
-        xhr.onload = () => {
-            window.location.href = xhr.responseURL; // redirect to response location header of authorize endpoint
-        };
-        xhr.open('GET', authorizeEndpoint, true); // call the authorize endpoint
-        const headers = this.SetDefaultHeaders();
-        for (let i: number = 0; i < headers.length; i++) {
-            const header: [string, string] = headers[i];
-            xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
-        }
-        xhr.send(null);
+        await this.SendRequest(authorizeEndpoint)
     }
 
     private async GetLogoutAuthorizationCode(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
@@ -549,6 +540,35 @@ export default class TryAuth {
         authorizeEndpoint = authorizeEndpoint + '&state=' + tryAuthAuthorizationOptions.State;
         authorizeEndpoint = authorizeEndpoint + '&post_logout_redirect_uri=' + tryAuthAuthorizationOptions.RedirectUri;
         return authorizeEndpoint;
+    }
+
+    private SendRequest(url: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const xhr: XMLHttpRequest = new XMLHttpRequest();
+            xhr.withCredentials = false;
+    
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    window.location.href = xhr.responseURL; // Redireciona para o endpoint autorizado
+                    resolve();
+                } else {
+                    reject(new Error(`Error on request: ${xhr.status} - ${xhr.statusText}`));
+                }
+            };
+    
+            xhr.onerror = () => reject(new Error("An error occurred while trying to process your request."));
+            xhr.ontimeout = () => reject(new Error("The request timed out. Please try again later."));
+    
+            xhr.open("GET", url, true);
+    
+            const headers = this.SetDefaultHeaders();
+            for (let i = 0; i < headers.length; i++) {
+                const header: [string, string] = headers[i];
+                xhr.setRequestHeader(header[0], this.EnsureASCII(header[1]));
+            }
+    
+            xhr.send(null);
+        });
     }
 
     private EnsureExternalIssuerEndpoint(externalIssuerEndpoint?: string): string {
