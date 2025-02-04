@@ -41,7 +41,7 @@ class TryAuthAuthorizationOptions {
     public RefreshToken?: string = null;
     public ExternalIssuerEndpoint?: string = null;
     public ExternalClientId?: string = null;
-    public RequirePkce?: boolean = false;
+    public RequirePkce?: boolean = true;
 }
 
 export class TryAuthError {
