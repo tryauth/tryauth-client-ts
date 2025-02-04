@@ -1,6 +1,6 @@
 {
   "name": "@tryauth/tryauth-client-ts",
-  "version": "1.0.25",
+  "version": "2.0.0",
   "author": "Alex Tochetto <atochetto@tech6group.com>",
   "description": "TypeScript library for OAuth2 Authentication",
   "keywords": [
@@ -30,8 +30,5 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/tryauth/tryauth-client-ts"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }
