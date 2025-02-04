@@ -41,7 +41,7 @@ class TryAuthAuthorizationOptions {
     public RefreshToken?: string = null;
     public ExternalIssuerEndpoint?: string = null;
     public ExternalClientId?: string = null;
-    public RequirePkce?: boolean;
+    public RequirePkce: boolean = false;
 }
 
 export class TryAuthError {
@@ -297,7 +297,9 @@ export default class TryAuth {
         const crypto = new Crypto();
         const tryAuthPkceCode = await crypto.GeneratePkceCodes();
         if (tryAuthAuthorizationOptions.RequirePkce)
+        {
             tryAuthAuthorizationOptions.CodeChallenge = tryAuthPkceCode.CodeChallenge;
+        }
         await this.SetCodeVerifier(tryAuthPkceCode.CodeVerifier);
         
         let authorizeEndpoint = this.GetAuthorizationCodeEndpoint(tryAuthAuthorizationOptions);
