@@ -41,7 +41,7 @@ class TryAuthAuthorizationOptions {
     public RefreshToken?: string = null;
     public ExternalIssuerEndpoint?: string = null;
     public ExternalClientId?: string = null;
-    public RequirePkce?: boolean = true;
+    public RequirePkce?: boolean;
 }
 
 export class TryAuthError {
@@ -76,7 +76,7 @@ export default class TryAuth {
     private readonly STATE: string = 'session_state';
     private readonly CODE_VERIFIER: string = 'code_verifier';
     private readonly REFRESH_TOKEN: string = 'refresh_token';
-    constructor(public localStorage: LocalStorageBackend = new LocalStorage()) { }
+    constructor(public localStorage: LocalStorageBackend = new LocalStorage(), public sessionStorage: SessionStorageBackend = new SessionStorage()) { }
 
     public async Authorize(tryAuthAuthorizationOptions: TryAuthAuthorizationOptions): Promise<void> {
         if (tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_IDTOKEN_TOKEN || tryAuthAuthorizationOptions.ResponseType === this.RESPONSE_TYPE_TOKEN_IDTOKEN) {
@@ -411,11 +411,11 @@ export default class TryAuth {
     }
 
     private SetCodeVerifier(code: string): void {
-        this.localStorage.setItemSync(this.CODE_VERIFIER, code);
+        this.sessionStorage.setItemSync(this.CODE_VERIFIER, code);
     }
 
     private GetCodeVerifier(): string {
-        return this.localStorage.getItemSync(this.CODE_VERIFIER);
+        return this.sessionStorage.getItemSync(this.CODE_VERIFIER);
     }
 
     private async GetResponseLocationUrl(): Promise<string> {
@@ -707,6 +707,80 @@ class LocalStorage extends LocalStorageBackend {
     constructor(storage?: ILocalStorage) {
         super();
         this._storage = storage || window.localStorage;
+    }
+    public getItem(name: string): Promise<string | null> {
+        return new Promise<string | null>((resolve, reject) => {
+            const value = this._storage.getItem(name);
+            if (value) {
+                resolve(value);
+            } else {
+                resolve(null);
+            }
+        });
+    }
+    public getItemSync(name: string): string | null {
+        const value = this._storage.getItem(name);
+        if (value) {
+            return value;
+        } else {
+            return null;
+        }
+    }
+    public removeItem(name: string): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this._storage.removeItem(name);
+            resolve();
+        });
+    }
+    public removeItemSync(name: string): void {
+        this._storage.removeItem(name);
+    }
+    public clear(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this._storage.clear();
+            resolve();
+        });
+    }
+    public setItem(name: string, value: string): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this._storage.setItem(name, value);
+            resolve();
+        });
+    }
+    public setItemSync(name: string, value: string): void {
+        this._storage.setItem(name, value);
+    }
+}
+
+interface ISessionStorage {
+    readonly length: number;
+    clear(): void;
+    getItem(key: string): string | null;
+    removeItem(key: string): void;
+    setItem(key: string, data: string): void;
+}
+
+abstract class SessionStorageBackend {
+    //When passed a key `name`, will return that key's value.
+    public abstract getItem(name: string): Promise<string | null>;
+    public abstract getItemSync(name: string): string | null;
+    //When passed a key `name`, will remove that key from the storage.
+    public abstract removeItem(name: string): Promise<void>;
+    public abstract removeItemSync(name: string): void;
+    //When invoked, will empty all keys out of the storage.
+    public abstract clear(): Promise<void>;
+    //The setItem() method of the `ILocalStorage` interface,
+    //when passed a key name and value, will add that key to the storage,
+    //or update that key's value if it already exists.
+    public abstract setItem(name: string, value: string): Promise<void>;
+    public abstract setItemSync(name: string, value: string): void;
+}
+
+class SessionStorage extends SessionStorageBackend {
+    private _storage: ISessionStorage;
+    constructor(storage?: ISessionStorage) {
+        super();
+        this._storage = storage || window.sessionStorage;
     }
     public getItem(name: string): Promise<string | null> {
         return new Promise<string | null>((resolve, reject) => {
